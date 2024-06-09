@@ -44,10 +44,9 @@ public class TransactionListenerImpl implements TransactionListener {
             switch (status) {
                 case 0:
                     return LocalTransactionState.UNKNOW;
-                case 1:
-                    return LocalTransactionState.COMMIT_MESSAGE;
                 case 2:
                     return LocalTransactionState.ROLLBACK_MESSAGE;
+                case 1:
                 default:
                     return LocalTransactionState.COMMIT_MESSAGE;
             }
