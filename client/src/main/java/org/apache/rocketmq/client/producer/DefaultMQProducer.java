@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.rocketmq.client.ClientConfig;
 import org.apache.rocketmq.client.QueryResult;
 import org.apache.rocketmq.client.Validators;
@@ -32,11 +31,15 @@ import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.exception.RequestTimeoutException;
 import org.apache.rocketmq.client.impl.MQClientManager;
 import org.apache.rocketmq.client.impl.producer.DefaultMQProducerImpl;
+import org.apache.rocketmq.client.lock.ReadWriteCASLock;
 import org.apache.rocketmq.client.trace.AsyncTraceDispatcher;
 import org.apache.rocketmq.client.trace.TraceDispatcher;
 import org.apache.rocketmq.client.trace.hook.EndTransactionTraceHookImpl;
 import org.apache.rocketmq.client.trace.hook.SendMessageTraceHookImpl;
 import org.apache.rocketmq.common.MixAll;
+import org.apache.rocketmq.common.compression.CompressionType;
+import org.apache.rocketmq.common.compression.Compressor;
+import org.apache.rocketmq.common.compression.CompressorFactory;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.common.message.MessageBatch;
 import org.apache.rocketmq.common.message.MessageClientIDSetter;
@@ -170,6 +173,31 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     private int backPressureForAsyncSendSize = 100 * 1024 * 1024;
 
     private RPCHook rpcHook = null;
+
+    /**
+     *  backPressureForAsyncSendNum is guaranteed to be modified at runtime and no new requests are allowed
+     */
+    private final ReadWriteCASLock backPressureForAsyncSendNumLock = new ReadWriteCASLock();
+
+    /**
+     * backPressureForAsyncSendSize is guaranteed to be modified at runtime and no new requests are allowed
+     */
+    private final ReadWriteCASLock backPressureForAsyncSendSizeLock = new ReadWriteCASLock();
+
+    /**
+     * Compress level of compress algorithm.
+     */
+    private int compressLevel = Integer.parseInt(System.getProperty(MixAll.MESSAGE_COMPRESS_LEVEL, "5"));
+
+    /**
+     * Compress type of compress algorithm, default using ZLIB.
+     */
+    private CompressionType compressType = CompressionType.of(System.getProperty(MixAll.MESSAGE_COMPRESS_TYPE, "ZLIB"));
+
+    /**
+     * Compressor of compress algorithm.
+     */
+    private Compressor compressor = CompressorFactory.getCompressor(compressType);
 
     /**
      * Default constructor.
@@ -1318,18 +1346,64 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
         return backPressureForAsyncSendNum;
     }
 
+    /**
+     * For user modify backPressureForAsyncSendNum at runtime
+     */
     public void setBackPressureForAsyncSendNum(int backPressureForAsyncSendNum) {
+        this.backPressureForAsyncSendNumLock.acquireWriteLock();
+        backPressureForAsyncSendNum = Math.max(backPressureForAsyncSendNum, 10);
+        int acquiredBackPressureForAsyncSendNum = this.backPressureForAsyncSendNum
+                - defaultMQProducerImpl.getSemaphoreAsyncSendNumAvailablePermits();
         this.backPressureForAsyncSendNum = backPressureForAsyncSendNum;
-        defaultMQProducerImpl.setSemaphoreAsyncSendNum(backPressureForAsyncSendNum);
+        defaultMQProducerImpl.setSemaphoreAsyncSendNum(acquiredBackPressureForAsyncSendNum);
+        this.backPressureForAsyncSendNumLock.releaseWriteLock();
     }
 
     public int getBackPressureForAsyncSendSize() {
         return backPressureForAsyncSendSize;
     }
 
+    /**
+    * For user modify backPressureForAsyncSendSize at runtime
+     */
     public void setBackPressureForAsyncSendSize(int backPressureForAsyncSendSize) {
+        this.backPressureForAsyncSendSizeLock.acquireWriteLock();
+        backPressureForAsyncSendSize = Math.max(backPressureForAsyncSendSize, 1024 * 1024);
+        int acquiredBackPressureForAsyncSendSize = this.backPressureForAsyncSendSize
+                - defaultMQProducerImpl.getSemaphoreAsyncSendSizeAvailablePermits();
         this.backPressureForAsyncSendSize = backPressureForAsyncSendSize;
-        defaultMQProducerImpl.setSemaphoreAsyncSendSize(backPressureForAsyncSendSize);
+        defaultMQProducerImpl.setSemaphoreAsyncSendSize(acquiredBackPressureForAsyncSendSize);
+        this.backPressureForAsyncSendSizeLock.releaseWriteLock();
+    }
+
+    /**
+     * Used for system internal adjust backPressureForAsyncSendSize
+     */
+    public void setBackPressureForAsyncSendSizeInsideAdjust(int backPressureForAsyncSendSize){
+        this.backPressureForAsyncSendSize = backPressureForAsyncSendSize;
+    }
+
+    /**
+     * Used for system internal adjust backPressureForAsyncSendNum
+     */
+    public void setBackPressureForAsyncSendNumInsideAdjust(int backPressureForAsyncSendNum){
+        this.backPressureForAsyncSendNum = backPressureForAsyncSendNum;
+    }
+
+    public void acquireBackPressureForAsyncSendSizeLock(){
+        this.backPressureForAsyncSendSizeLock.acquireReadLock();
+    }
+
+    public void releaseBackPressureForAsyncSendSizeLock(){
+        this.backPressureForAsyncSendSizeLock.releaseReadLock();
+    }
+
+    public void acquireBackPressureForAsyncSendNumLock(){
+        this.backPressureForAsyncSendNumLock.acquireReadLock();
+    }
+
+    public void releaseBackPressureForAsyncSendNumLock(){
+        this.backPressureForAsyncSendNumLock.releaseReadLock();
     }
 
     public List<String> getTopics() {
@@ -1344,5 +1418,26 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     public void setStartDetectorEnable(boolean startDetectorEnable) {
         super.setStartDetectorEnable(startDetectorEnable);
         this.defaultMQProducerImpl.getMqFaultStrategy().setStartDetectorEnable(startDetectorEnable);
+    }
+
+    public int getCompressLevel() {
+        return compressLevel;
+    }
+
+    public void setCompressLevel(int compressLevel) {
+        this.compressLevel = compressLevel;
+    }
+
+    public CompressionType getCompressType() {
+        return compressType;
+    }
+
+    public void setCompressType(CompressionType compressType) {
+        this.compressType = compressType;
+        this.compressor = CompressorFactory.getCompressor(compressType);
+    }
+
+    public Compressor getCompressor() {
+        return compressor;
     }
 }
