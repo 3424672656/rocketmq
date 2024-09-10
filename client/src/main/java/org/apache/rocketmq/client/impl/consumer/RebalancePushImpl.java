@@ -142,6 +142,9 @@ public class RebalancePushImpl extends RebalanceImpl {
 
     @Override
     public ConsumeType consumeType() {
+        if (super.getExistPop()) {
+            return ConsumeType.CONSUME_POP;
+        }
         return ConsumeType.CONSUME_PASSIVELY;
     }
 
