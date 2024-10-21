@@ -395,7 +395,7 @@ public interface MQAdminExt extends MQAdmin {
         final String msgId) throws RemotingException, MQClientException, InterruptedException, MQBrokerException;
 
     void setMessageRequestMode(final String brokerAddr, final String topic, final String consumerGroup,
-        final MessageRequestMode mode, final int popWorkGroupSize, final long timeoutMillis)
+        final MessageRequestMode mode, final int popWorkGroupSize, final List<String> clientIds, final long timeoutMillis)
         throws InterruptedException, RemotingTimeoutException, RemotingSendRequestException,
         RemotingConnectException, MQClientException;
 

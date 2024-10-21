@@ -3077,7 +3077,7 @@ public class MQClientAPIImpl implements NameServerUpdateCallback, StartAndShutdo
     }
 
     public void setMessageRequestMode(final String brokerAddr, final String topic, final String consumerGroup,
-        final MessageRequestMode mode, final int popShareQueueNum, final long timeoutMillis)
+        final MessageRequestMode mode, final int popShareQueueNum, final List<String> clientIds, final long timeoutMillis)
         throws InterruptedException, RemotingTimeoutException, RemotingSendRequestException,
         RemotingConnectException, MQClientException {
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.SET_MESSAGE_REQUEST_MODE, null);
@@ -3087,6 +3087,7 @@ public class MQClientAPIImpl implements NameServerUpdateCallback, StartAndShutdo
         requestBody.setConsumerGroup(consumerGroup);
         requestBody.setMode(mode);
         requestBody.setPopShareQueueNum(popShareQueueNum);
+        requestBody.setClientIds(clientIds);
         request.setBody(requestBody.encode());
 
         RemotingCommand response = this.remotingClient.invokeSync(MixAll.brokerVIPChannel(this.clientConfig.isVipChannelEnabled(), brokerAddr), request, timeoutMillis);

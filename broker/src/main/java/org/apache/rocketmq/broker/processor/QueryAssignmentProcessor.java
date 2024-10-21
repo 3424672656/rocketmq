@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.rocketmq.broker.BrokerController;
+import org.apache.rocketmq.broker.client.ClientChannelInfo;
 import org.apache.rocketmq.broker.client.ConsumerGroupInfo;
 import org.apache.rocketmq.broker.loadbalance.MessageRequestModeManager;
 import org.apache.rocketmq.broker.topic.TopicRouteInfoManager;
@@ -41,6 +42,8 @@ import org.apache.rocketmq.logging.org.slf4j.Logger;
 import org.apache.rocketmq.logging.org.slf4j.LoggerFactory;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 import org.apache.rocketmq.remoting.exception.RemotingCommandException;
+import org.apache.rocketmq.remoting.exception.RemotingSendRequestException;
+import org.apache.rocketmq.remoting.exception.RemotingTimeoutException;
 import org.apache.rocketmq.remoting.netty.NettyRequestProcessor;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.apache.rocketmq.remoting.protocol.RequestCode;
@@ -309,6 +312,7 @@ public class QueryAssignmentProcessor implements NettyRequestProcessor {
         final SetMessageRequestModeRequestBody requestBody = SetMessageRequestModeRequestBody.decode(request.getBody(), SetMessageRequestModeRequestBody.class);
 
         final String topic = requestBody.getTopic();
+        final List<String> clientIds = requestBody.getClientIds();
         if (topic.startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
             response.setCode(ResponseCode.NO_PERMISSION);
             response.setRemark("retry topic is not allowed to set mode");
@@ -319,6 +323,17 @@ public class QueryAssignmentProcessor implements NettyRequestProcessor {
 
         this.messageRequestModeManager.setMessageRequestMode(topic, consumerGroup, requestBody);
         this.messageRequestModeManager.persist();
+
+        for (String clientId : clientIds) {
+            ClientChannelInfo clientChannelInfo = this.brokerController.getConsumerManager().findChannel(consumerGroup, clientId);
+            RemotingCommand newRequest = RemotingCommand.createResponseCommand(RequestCode.NOTIFY_MESSAGE_REQUEST_MODE_TO_CLIENT, null);
+            newRequest.setBody(request.getBody());
+            try {
+                this.brokerController.getBroker2Client().callClient(clientChannelInfo.getChannel(), newRequest);
+            } catch (RemotingSendRequestException | RemotingTimeoutException | InterruptedException e) {
+                log.warn("Fail to notify RequestMessageMode changes to clientId:{}", clientId);
+            }
+        }
 
         response.setCode(ResponseCode.SUCCESS);
         response.setRemark(null);

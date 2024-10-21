@@ -37,6 +37,8 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.ArrayList;
+
 import static com.google.common.truth.Truth.assertThat;
 
 public class PopSubCheckIT extends BaseConf {
@@ -70,7 +72,7 @@ public class PopSubCheckIT extends BaseConf {
         producer.getProducer().setCompressMsgBodyOverHowmuch(Integer.MAX_VALUE);
 
         for (String brokerAddr : new String[]{brokerController1.getBrokerAddr(), brokerController2.getBrokerAddr()}) {
-            defaultMQAdminExt.setMessageRequestMode(brokerAddr, topic, group, MessageRequestMode.POP, 8, 60_000);
+            defaultMQAdminExt.setMessageRequestMode(brokerAddr, topic, group, MessageRequestMode.POP, 8, new ArrayList<>(), 60_000);
         }
 
         RMQPopConsumer consumer = ConsumerFactory.getRMQPopConsumer(NAMESRV_ADDR, group,

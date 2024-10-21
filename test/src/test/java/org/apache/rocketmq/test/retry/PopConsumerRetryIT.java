@@ -17,6 +17,7 @@
 
 package org.apache.rocketmq.test.retry;
 
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -85,7 +86,7 @@ public class PopConsumerRetryIT extends BaseConf {
             TopicConfig topicConfig = new TopicConfig(topicName, 1, 1, 6);
             defaultMQAdminExt.createAndUpdateTopicConfig(brokerAddr, topicConfig);
             defaultMQAdminExt.setMessageRequestMode(brokerAddr, topicName, groupName,
-                MessageRequestMode.POP, 8, 3000L);
+                MessageRequestMode.POP, 8, new ArrayList<>(), 3000L);
         }
     }
 

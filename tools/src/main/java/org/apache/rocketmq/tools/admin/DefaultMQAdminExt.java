@@ -787,10 +787,10 @@ public class DefaultMQAdminExt extends ClientConfig implements MQAdminExt {
 
     @Override
     public void setMessageRequestMode(final String brokerAddr, final String topic, final String consumerGroup,
-        final MessageRequestMode mode, final int popShareQueueNum, final long timeoutMillis)
+        final MessageRequestMode mode, final int popShareQueueNum, final List<String> clientIds, final long timeoutMillis)
         throws InterruptedException, RemotingTimeoutException, RemotingSendRequestException,
         RemotingConnectException, MQClientException {
-        this.defaultMQAdminExtImpl.setMessageRequestMode(brokerAddr, topic, consumerGroup, mode, popShareQueueNum, timeoutMillis);
+        this.defaultMQAdminExtImpl.setMessageRequestMode(brokerAddr, topic, consumerGroup, mode, popShareQueueNum, clientIds, timeoutMillis);
     }
 
     @Override

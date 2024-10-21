@@ -16,6 +16,7 @@
  */
 package org.apache.rocketmq.example.simple;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -55,7 +56,7 @@ public class PopConsumer {
         for (BrokerData brokerData : brokerDatas) {
             Set<String> brokerAddrs = new HashSet<>(brokerData.getBrokerAddrs().values());
             for (String brokerAddr : brokerAddrs) {
-                mqAdminExt.setMessageRequestMode(brokerAddr, TOPIC, CONSUMER_GROUP, MessageRequestMode.POP, 8, 3_000);
+                mqAdminExt.setMessageRequestMode(brokerAddr, TOPIC, CONSUMER_GROUP, MessageRequestMode.POP, 8, new ArrayList<>(), 3_000);
             }
         }
     }

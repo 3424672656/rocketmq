@@ -43,10 +43,7 @@ import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -499,10 +496,10 @@ public class PopSlaveActingMasterIT extends ContainerIntegrationTestBase {
         for (BrokerContainer brokerContainer : brokerContainerList) {
             for (InnerBrokerController master : brokerContainer.getMasterBrokers()) {
                 String brokerAddr = master.getBrokerAddr();
-                defaultMQAdminExt.setMessageRequestMode(brokerAddr, topic, CONSUME_GROUP, MessageRequestMode.POP, 8, 60_000);
+                defaultMQAdminExt.setMessageRequestMode(brokerAddr, topic, CONSUME_GROUP, MessageRequestMode.POP, 8, new ArrayList<>(), 60_000);
             }
             for (InnerSalveBrokerController slave : brokerContainer.getSlaveBrokers()) {
-                defaultMQAdminExt.setMessageRequestMode(slave.getBrokerAddr(), topic, CONSUME_GROUP, MessageRequestMode.POP, 8, 60_000);
+                defaultMQAdminExt.setMessageRequestMode(slave.getBrokerAddr(), topic, CONSUME_GROUP, MessageRequestMode.POP, 8, new ArrayList<>(), 60_000);
             }
         }
 

@@ -20,6 +20,8 @@ package org.apache.rocketmq.remoting.protocol.body;
 import org.apache.rocketmq.common.message.MessageRequestMode;
 import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 
+import java.util.List;
+
 public class SetMessageRequestModeRequestBody extends RemotingSerializable {
 
     private String topic;
@@ -32,6 +34,8 @@ public class SetMessageRequestModeRequestBody extends RemotingSerializable {
     consumer working in pop mode could share the MessageQueues assigned to the N (N = popShareQueueNum) consumers following it in the cid list
      */
     private int popShareQueueNum = 0;
+
+    private List<String> clientIds;
 
     public SetMessageRequestModeRequestBody() {
     }
@@ -66,5 +70,13 @@ public class SetMessageRequestModeRequestBody extends RemotingSerializable {
 
     public void setPopShareQueueNum(int popShareQueueNum) {
         this.popShareQueueNum = popShareQueueNum;
+    }
+
+    public List<String> getClientIds() {
+        return clientIds;
+    }
+
+    public void setClientIds(List<String> clientIds) {
+        this.clientIds = clientIds;
     }
 }

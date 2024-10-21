@@ -17,10 +17,9 @@
 package org.apache.rocketmq.example.lmq;
 
 import com.google.common.collect.Lists;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+
+import java.util.*;
+
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
@@ -96,7 +95,7 @@ public class LMQPushPopConsumer {
             Set<String> brokerAddrs = new HashSet<>(brokerData.getBrokerAddrs().values());
             for (String brokerAddr : brokerAddrs) {
                 mqAdminExt.setMessageRequestMode(brokerAddr, LMQ_TOPIC, CONSUMER_GROUP, MessageRequestMode.POP, 8,
-                    3_000);
+                    new ArrayList<>(), 3_000);
             }
         }
     }
