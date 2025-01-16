@@ -81,7 +81,7 @@ public class MessageStoreConfig {
     private boolean timerEnableCheckMetrics = true;
     private boolean timerInterceptDelayLevel = false;
     private int timerMaxDelaySec = 3600 * 24 * 3;
-    private boolean timerWheelEnable = true;
+    private boolean timerWheelEnable = false;
 
     /**
      * 1. Register to broker after (startTime + disappearTimeAfterStart)
@@ -484,7 +484,7 @@ public class MessageStoreConfig {
      * The message will be written to rocksdb.
      * Close the time wheel when the file timing message is 0
      */
-    private boolean enableTimerMessageOnRocksDB = false;
+    private boolean enableTimerMessageOnRocksDB = true;
 
     public boolean isRocksdbCQDoubleWriteEnable() {
         return rocksdbCQDoubleWriteEnable;
