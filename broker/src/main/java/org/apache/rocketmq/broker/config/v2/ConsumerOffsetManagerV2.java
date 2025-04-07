@@ -168,23 +168,12 @@ public class ConsumerOffsetManagerV2 extends ConsumerOffsetManager {
      */
     @Override
     public void commitOffset(String clientHost, String group, String topic, int queueId, long offset) {
-        String key = topic + TOPIC_GROUP_SEPARATOR + group;
-
         // We maintain a copy of classic consumer offset table in memory as they take very limited memory footprint.
         // For LMQ offsets, given the volume and number of these type of records, they are maintained in RocksDB
         // directly. Frequently used LMQ consumer offsets should reside either in block-cache or MemTable, so read/write
         // should be blazingly fast.
         if (!MixAll.isLmq(topic)) {
-            if (offsetTable.containsKey(key)) {
-                offsetTable.get(key).put(queueId, offset);
-            } else {
-                ConcurrentMap<Integer, Long> map = new ConcurrentHashMap<>();
-                ConcurrentMap<Integer, Long> prev = offsetTable.putIfAbsent(key, map);
-                if (null != prev) {
-                    map = prev;
-                }
-                map.put(queueId, offset);
-            }
+            super.commitOffset(clientHost, group, topic, queueId, offset);
         }
 
         ByteBuf keyBuf = keyOfConsumerOffset(group, topic, queueId);
