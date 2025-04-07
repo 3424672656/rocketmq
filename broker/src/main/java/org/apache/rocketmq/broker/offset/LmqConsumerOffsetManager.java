@@ -132,4 +132,26 @@ public class LmqConsumerOffsetManager extends ConsumerOffsetManager {
             }
         }
     }
+
+    @Override
+    public void cleanOffsetByTopic(String topic) {
+        if (!MixAll.isLmq(topic)) {
+            super.cleanOffsetByTopic(topic);
+            return;
+        }
+
+        Iterator<Map.Entry<String, Long>> it = this.lmqOffsetTable.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<String, Long> next = it.next();
+            String topicAtGroup = next.getKey();
+            if (topicAtGroup.contains(topic)) {
+                String[] arrays = topicAtGroup.split(TOPIC_GROUP_SEPARATOR);
+                if (arrays.length == 2 && topic.equals(arrays[0])) {
+                    it.remove();
+                    removeConsumerOffset(topicAtGroup);
+                    LOG.warn("clean lmq topic offset {}", topicAtGroup);
+                }
+            }
+        }
+    }
 }

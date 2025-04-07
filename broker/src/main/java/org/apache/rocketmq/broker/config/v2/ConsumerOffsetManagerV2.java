@@ -20,6 +20,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.util.internal.PlatformDependent;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.rocketmq.broker.BrokerController;
@@ -424,5 +425,56 @@ public class ConsumerOffsetManagerV2 extends ConsumerOffsetManager {
             keyBuf.release();
         }
         return -1;
+    }
+
+    @Override
+    public void cleanOffsetByTopic(String topic) {
+        if (!MixAll.isLmq(topic)) {
+            super.cleanOffsetByTopic(topic);
+            return;
+        }
+
+        byte[] deleteTopicBytes = topic.getBytes(StandardCharsets.UTF_8);
+        // delete consumer offset and pull offset
+        ByteBuf beginKeyBuf = AbstractRocksDBStorage.POOLED_ALLOCATOR.directBuffer(4);
+        beginKeyBuf.writeByte(TablePrefix.TABLE.getValue());
+        beginKeyBuf.writeShort(TableId.CONSUMER_OFFSET.getValue());
+        beginKeyBuf.writeByte(RecordPrefix.DATA.getValue());
+
+        ByteBuf endKeyBuf = AbstractRocksDBStorage.POOLED_ALLOCATOR.directBuffer(4);
+        endKeyBuf.writeByte(TablePrefix.TABLE.getValue());
+        endKeyBuf.writeShort(TableId.PULL_OFFSET.getValue());
+        endKeyBuf.writeByte(RecordPrefix.DATA.getValue() + 1);
+
+        try (RocksIterator iterator = configStorage.iterate(beginKeyBuf.nioBuffer(), endKeyBuf.nioBuffer());
+             WriteBatch writeBatch = new WriteBatch()) {
+            while (iterator.isValid()) {
+                ByteBuffer key = ByteBuffer.wrap(iterator.key());
+                try {
+                    // skip table-prefix, table-id, record-prefix
+                    key.position(1 + 2 + 1);
+                    short groupLen = key.getShort();
+                    // skip group-len, group-name, ctrl-byte
+                    key.position(1 + 2 + 1 + 2 + groupLen + 1);
+
+                    short topicLen = key.getShort();
+                    byte[] topicBytes = new byte[topicLen];
+                    key.get(topicBytes);
+
+                    if (Arrays.equals(deleteTopicBytes, topicBytes)) {
+                        writeBatch.delete(iterator.key());
+                    }
+                } catch (Exception e) {
+                    LOG.error("clean offset by topic:{} error", topic, e);
+                }
+                iterator.next();
+            }
+            configStorage.write(writeBatch);
+        } catch (Exception e) {
+            LOG.error("clean lmq offset error", e);
+        } finally {
+            beginKeyBuf.release();
+            endKeyBuf.release();
+        }
     }
 }
