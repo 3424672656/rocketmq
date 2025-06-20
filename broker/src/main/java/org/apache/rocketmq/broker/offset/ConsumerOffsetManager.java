@@ -68,7 +68,9 @@ public class ConsumerOffsetManager extends ConfigManager {
     }
 
     protected void removeConsumerOffset(String topicAtGroup) {
-
+        this.offsetTable.remove(topicAtGroup);
+        this.pullOffsetTable.remove(topicAtGroup);
+        this.resetOffsetTable.remove(topicAtGroup);
     }
 
     public void cleanOffset(String group) {

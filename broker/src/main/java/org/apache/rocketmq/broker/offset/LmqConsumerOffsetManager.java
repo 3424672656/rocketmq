@@ -132,4 +132,14 @@ public class LmqConsumerOffsetManager extends ConsumerOffsetManager {
             }
         }
     }
+
+    @Override
+    protected void removeConsumerOffset(String topicAtGroup) {
+        if (!MixAll.isLmq(topicAtGroup)) {
+            super.removeConsumerOffset(topicAtGroup);
+            return;
+        }
+        boolean removed =lmqOffsetTable.remove(topicAtGroup) != null;
+        LOG.warn("remove lmq group offset {}, removed:{}", topicAtGroup, removed);
+    }
 }

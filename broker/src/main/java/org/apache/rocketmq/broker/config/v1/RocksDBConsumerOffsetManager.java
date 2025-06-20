@@ -97,6 +97,7 @@ public class RocksDBConsumerOffsetManager extends ConsumerOffsetManager {
     @Override
     protected void removeConsumerOffset(String topicAtGroup) {
         try {
+            super.removeConsumerOffset(topicAtGroup);
             byte[] keyBytes = topicAtGroup.getBytes(DataConverter.CHARSET_UTF8);
             this.rocksDBConfigManager.delete(keyBytes);
         } catch (Exception e) {
